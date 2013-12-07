@@ -13,6 +13,9 @@
 #= require jquery
 #= require jquery_ujs
 #= require highcharts
+#= require d3.min
+#= require d3.layout.min
+#= require rickshaw.min
 #= require_tree .
 
 $ ->
