@@ -5,4 +5,4 @@ Example:
     rails generate metric User
 
     This will create:
-      app/properity/user_metric.rb
+      app/prosperity/user_metric.rb
