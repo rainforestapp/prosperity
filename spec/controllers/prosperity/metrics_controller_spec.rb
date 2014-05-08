@@ -38,28 +38,36 @@ module Prosperity
     end
 
     describe "GET data" do
-      it "returns group data by default" do
-        Extractors::Group.any_instance.stub(to_a: [1,2,3])
+      it "returns interval data by default" do
+        Extractors::Interval.any_instance.stub(to_a: [1,2,3])
 
         get :data, id: metric.id, format: 'json'
         response.should be_success
         json['data'].should == [1,2,3]
       end
 
-      it "lets you specify any extractor key" do
-        Extractors::Count.any_instance.stub(to_a: [1,2,3])
+      it "returns the actual start and end time" do
+        Extractors::Interval.any_instance.stub(to_a: [1,2,3])
+        get :data, id: metric.id, format: 'json'
+        response.should be_success
+        json['start_time'].should be_present
+        json['end_time'].should be_present
+      end
 
-        get :data, id: metric.id, extractor: 'count', format: 'json'
+      it "lets you specify any extractor key" do
+        Extractors::Total.any_instance.stub(to_a: [1,2,3])
+
+        get :data, id: metric.id, extractor: 'total', format: 'json'
         response.should be_success
         json['data'].should == [1,2,3]
-        json['key'].should == 'count'
-        DateTime.parse(json['start_time']).to_i.should == 1.year.ago.to_i
-        json['period_milliseconds'].should == 1.month.to_i * 1000
+        json['key'].should == 'total'
+        (DateTime.parse(json['start_time']).to_i - 3.months.ago.to_i).should be <= 1.hour
+        json['period_milliseconds'].should == 1.week.to_i * 1000
       end
 
       it "lets you specify the option parameter" do
-        Extractors::Group.any_instance.stub(to_a: [1,2,3])
-        Extractors::Group.should_receive(:new).with(anything,
+        Extractors::Interval.any_instance.stub(to_a: [1,2,3])
+        Extractors::Interval.should_receive(:new).with(anything,
             'with_1',
             anything,
             anything,
@@ -73,13 +81,19 @@ module Prosperity
       it "lets you specify the period" do
         get :data, id: metric.id, period: 'week', format: 'json'
         response.should be_success
-        json['data'].size.should be >= 52
+        json['data'].size.should be >= 12
       end
 
       it "lets you specify the date range" do
         get :data, id: metric.id, period: 'week', start_time: Time.now.beginning_of_day, end_time: Time.now.end_of_day, format: 'json'
         response.should be_success
         json['data'].size.should be >= 1
+      end
+
+      it "return 404 error code if specified metric does not exist" do
+        get :data, id: 'blah', format: 'json'
+        response.code.to_i.should == 404
+        json['error'].should be_present
       end
     end
   end

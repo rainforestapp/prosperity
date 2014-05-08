@@ -21,7 +21,13 @@ module Prosperity
             extractors: @metric.extractors.map do |ext|
               {
                 key: ext.key,
-                url: data_metric_path(id: @metric.id, extractor: ext.key, option: option, period: period, start_time: params[:start_time], end_time: params[:end_time]),
+                url: data_metric_path(id: @metric.id,
+                                      extractor: ext.key,
+                                      option: option,
+                                      period: period,
+                                      start_time: start_time,
+                                      end_time: end_time),
+
               }
             end
           }
@@ -30,10 +36,7 @@ module Prosperity
     end
 
     def data
-      ext_klass = Metric.extractors[params.fetch(:extractor, "group")]
-
-      end_time = params[:end_time].present? ? Time.parse(params[:end_time].to_s) : Time.now
-      start_time = params[:start_time].present? ? Time.parse(params[:start_time].to_s) : end_time - 12.months
+      ext_klass = Metric.extractors[params.fetch(:extractor, "interval")]
 
       p = Prosperity::Periods::ALL.fetch(period)
       ext = ext_klass.new(@metric, option, start_time, end_time, p)
@@ -41,7 +44,9 @@ module Prosperity
       json = {
         data: ext.to_a,
         key: ext.key,
-        start_time: start_time.iso8601,
+        label: ext.label,
+        start_time: p.actual_start_time(start_time).iso8601,
+        end_time: p.actual_end_time(end_time).iso8601,
         period_milliseconds: p.duration * 1000
       }
       render json: json
@@ -50,16 +55,13 @@ module Prosperity
 
     def get_metric
       @metric = MetricFinder.find_by_name(params.fetch(:id)).new
+    rescue NameError
+      render_json_error("Could not find metric #{params.fetch(:id)}", 404)
     end
 
     def option
       params.fetch(:option, 'default')
     end
-
-    def period
-      params.fetch(:period, 'month')
-    end
-
     helper_method :option
   end
 end
